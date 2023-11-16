@@ -1,4 +1,5 @@
 <script>
+    import '../app.css'
 </script>
 
 <svelte:head>
@@ -8,10 +9,5 @@
 </svelte:head>
 
 <section>
-    <h1>
-    </h1>
-
+<p>Home Page</p>
 </section>
-
-<style>
-</style>
