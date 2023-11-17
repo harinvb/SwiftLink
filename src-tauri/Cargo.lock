@@ -4260,7 +4260,6 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 name = "swiftlink"
 version = "0.0.1"
 dependencies = [
- "anyhow",
  "libp2p",
  "serde",
  "serde_json",

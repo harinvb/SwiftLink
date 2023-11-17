@@ -1,13 +1,17 @@
 <script>
-	export const prerender = true;
-	export const ssr = false;
-	import Header from '$lib/Header.svelte';
+	import NavBar from '$lib/NavBar.svelte';
 	import '../app.css';
 	//    import Footer from '$lib/Footer.svelte';
 </script>
 
-<Header />
-<main class="h-fit flex items-center justify-center">
-	<slot />
-</main>
-<!--<Footer />-->
+<!-- <main class="h-full flex items-center justify-center"></main> -->
+
+<div class="flex flex-col h-screen">
+	<!-- Top div occupying the entire screen above the navbar -->
+	<div class="flex-grow">
+		<!-- Content of the top div goes here -->
+		<slot />
+	</div>
+
+	<NavBar />
+</div>

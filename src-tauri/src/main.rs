@@ -1,24 +1,17 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod core;
 mod client;
+mod core;
 mod log;
 
-
-use anyhow::Result;
-
-
-
-use core::setup_core;
-use client::setup_client;
-use log::setup_logging;
+use client::init_backend;
+use log::init_logging;
+use std::error::Error;
 
 #[tokio::main]
-async fn main() -> Result<()>{
-    setup_logging()?;
-    setup_core()?;
-    setup_client()?;
+async fn main() -> Result<(), Box<dyn Error>> {
+    init_logging()?;
+    init_backend()?;
     Ok(())
 }
-

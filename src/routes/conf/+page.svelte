@@ -2,6 +2,6 @@
 	import '$lib/../app.css';
 </script>
 
-<section>
+<div>
 	<p>Profile</p>
-</section>
+</div>
