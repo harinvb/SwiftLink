@@ -1,5 +1,5 @@
 use libp2p::mdns::Event;
-use tracing::info;
+// use tracing::info;
 
 use crate::core::Context;
 
@@ -10,13 +10,11 @@ pub fn process_mdns_event(_context: Context, event: Event) {
         Event::Discovered(peers) => {
             for (peer_id, multiaddr) in peers {
                 //TODO: Add peers to local db
-                info!("discovered peer {} with multiaddress {}", peer_id, multiaddr);
             }
         }
         Event::Expired(peers) => {
             for (peer_id, multiaddr) in peers {
                 //TODO: Remove peers from local db
-                info!("expired peer {} with multiaddress {}", peer_id, multiaddr);
             }
         }
     }
