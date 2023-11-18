@@ -4,7 +4,7 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	const handle = listen('test', (event: any) => {
+	listen('test', (event: unknown) => {
 		data.clients = [...data.clients, event.payload];
 	});
 </script>

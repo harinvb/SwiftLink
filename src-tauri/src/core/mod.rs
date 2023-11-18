@@ -1,12 +1,15 @@
-use behaviour::{SwiftLink, SwiftLinkEvent};
+use anyhow::Result;
+use libp2p::{futures::StreamExt, noise, Swarm, SwarmBuilder, yamux};
+use sqlx::{migrate::MigrateDatabase, Sqlite};
+use tauri::{App, AppHandle};
+use tokio::spawn;
+use tracing::info;
 
-use libp2p::{futures::StreamExt, noise, swarm::SwarmEvent, yamux, Swarm, SwarmBuilder};
-use std::{error::Error, time::Duration};
+use behaviour::SwiftLink;
 
-use tauri::{App, AppHandle, Manager};
-use tokio::{select, spawn, time::interval};
-use tracing::{error, info};
 mod behaviour;
+mod cbor_behaviour;
+mod mdns_behaviour;
 
 #[derive(Debug, Clone)]
 struct Context {
@@ -21,37 +24,57 @@ impl Context {
     }
 }
 
-pub fn init_core(app: &mut App) -> Result<(), Box<dyn Error>> {
+pub fn init_core(app: &mut App) -> Result<()> {
     let context = Context::new(app);
     info!("initializing core backend");
     let mut swarm = init_swarm()?;
     info!("swarm profile initialized");
     bind(&mut swarm)?;
     info!("core initialized successfully");
-    let mut interval = interval(Duration::from_secs(1));
+    spawn_process(&context, swarm);
+    info!("process spawned successfully");
+    // app.get_window("splashscreen").unwrap().close()?;
+    Ok(())
+}
+
+pub async fn init_db(context: Context) -> Result<()> {
+    let path_resolver = context.app_handle.path_resolver();
+    //TODO: Replace unwrap with proper error handling
+    let db_path = path_resolver.app_local_data_dir().unwrap()
+        .join("slink.db");
+    let db_url = db_path.to_str().expect("failed to convert db path to str");
+    if !Sqlite::database_exists(db_url).await.unwrap_or(false) {
+        println!("creating database {}", db_url);
+        Sqlite::create_database(db_url).await?;
+    }
+    Ok(())
+}
+
+fn spawn_process(context: &Context, mut swarm: Swarm<SwiftLink>) {
+    let context = context.clone();
     spawn(async move {
         loop {
-            select! {
-                event = swarm.select_next_some() => process_event(context.clone(),event),
-                _ = interval.tick() => {
-                    let context = context.clone();
-                    if let Err(err) = context.app_handle.emit_all("test", "Test Event") {
-                        error!("Unable to emit event {:?}", err);
-                    }
+            match swarm.next().await {
+                Some(event) => {
+                    spawn(async move {
+                        behaviour::process_event(context.clone(), event)
+                    });
+                }
+                None => {
+                    info!("swarm select next some returned none");
                 }
             }
         }
     });
-    Ok(())
 }
 
-fn bind(swarm: &mut Swarm<SwiftLink>) -> Result<(), Box<dyn Error>> {
+fn bind(swarm: &mut Swarm<SwiftLink>) -> Result<()> {
     swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
     swarm.listen_on("/ip6/::/tcp/0".parse()?)?;
     Ok(())
 }
 
-fn init_swarm() -> Result<Swarm<SwiftLink>, Box<dyn Error>> {
+fn init_swarm() -> Result<Swarm<SwiftLink>> {
     let swarm = SwarmBuilder::with_new_identity()
         // Runtime Config
         .with_tokio()
@@ -70,15 +93,4 @@ fn init_swarm() -> Result<Swarm<SwiftLink>, Box<dyn Error>> {
         })
         .build();
     Ok(swarm)
-}
-
-fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>) {
-    match event {
-        e => {
-            info!("{:?}", e);
-            if let Err(err) = context.app_handle.emit_all("test", "Test Event") {
-                error!("Unable to emit event {:?}", err);
-            }
-        }
-    };
 }
