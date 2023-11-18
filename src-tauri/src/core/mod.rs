@@ -1,6 +1,8 @@
-use anyhow::Result;
+use std::sync::Arc;
+
+use anyhow::{anyhow, Result};
 use libp2p::{futures::StreamExt, noise, Swarm, SwarmBuilder, yamux};
-use sqlx::{migrate::MigrateDatabase, Sqlite};
+use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tauri::{App, AppHandle};
 use tokio::spawn;
 use tracing::info;
@@ -11,71 +13,79 @@ mod behaviour;
 mod cbor_behaviour;
 mod mdns_behaviour;
 
-#[derive(Debug, Clone)]
+
+pub type SLSwarm = Swarm<SwiftLink>;
+
+#[derive(Clone)]
 pub struct Context {
     pub app_handle: AppHandle,
+    pub db: SqlitePool,
 }
 
 impl Context {
-    fn new(app: &mut App) -> Self {
-        Self {
-            app_handle: app.handle(),
-        }
+    async fn new(app: AppHandle, db: Pool<Sqlite>) -> Result<Self> {
+        Ok(Self {
+            app_handle: app,
+            db
+        })
     }
 }
 
-pub fn init_core(app: &mut App) -> Result<()> {
-    let context = Context::new(app);
+pub async fn init_core(app: &mut App) -> Result<()> {
+    info!("checking db");
+    let mut app_handle = app.handle();
+    let db_url = create_or_get_db(app_handle).await?;
+    info!("db url: {}", db_url);
+    let sqlite = SqlitePool::connect(&db_url).await?;
     info!("initializing core backend");
     let mut swarm = init_swarm()?;
     info!("swarm profile initialized");
     bind(&mut swarm)?;
     info!("core initialized successfully");
-    spawn_process(&context, swarm);
+    app_handle = app.handle();
+    let context = Context::new(app_handle, sqlite).await?;
+    info!("context created successfully");
+    spawn_process(context,swarm);
     info!("process spawned successfully");
     // app.get_window("splashscreen").unwrap().close()?;
     Ok(())
 }
 
-pub async fn init_db(context: Context) -> Result<()> {
-    let path_resolver = context.app_handle.path_resolver();
-    //TODO: Replace unwrap with proper error handling
-    let db_path = path_resolver.app_local_data_dir().unwrap()
+pub async fn create_or_get_db(handle: AppHandle) -> Result<String> {
+    let path_resolver = handle.path_resolver();
+    let db_path = path_resolver.app_local_data_dir().ok_or(anyhow!("failed to get app local data dir"))?
         .join("slink.db");
-    let db_url = db_path.to_str().expect("failed to convert db path to str");
+    let db_url = db_path.to_str().ok_or(anyhow!("db path is not valid utf8"))?;
     if !Sqlite::database_exists(db_url).await.unwrap_or(false) {
         println!("creating database {}", db_url);
         Sqlite::create_database(db_url).await?;
     }
-    Ok(())
+    Ok(db_url.to_string())
 }
 
-fn spawn_process(context: &Context, mut swarm: Swarm<SwiftLink>) {
-    let context = context.clone();
+fn spawn_process(context: Context, mut swarm: SLSwarm) {
     spawn(async move {
         loop {
             let context = context.clone();
             match swarm.next().await {
                 Some(event) => {
-                    spawn(async move {
-                        behaviour::process_event(context.clone(), event)
-                    });
+                    behaviour::process_event(context.clone(), event,&mut swarm)
                 }
                 None => {
-                    info!("swarm select next some returned none");
+                    info!("swarm returned none");
                 }
             }
         }
     });
 }
 
-fn bind(swarm: &mut Swarm<SwiftLink>) -> Result<()> {
+fn bind(swarm: &mut SLSwarm) -> Result<()> {
     swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
     swarm.listen_on("/ip6/::/tcp/0".parse()?)?;
     Ok(())
 }
 
-fn init_swarm() -> Result<Swarm<SwiftLink>> {
+fn init_swarm() -> Result<SLSwarm> {
     let swarm = SwarmBuilder::with_new_identity()
         // Runtime Config
         .with_tokio()

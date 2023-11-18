@@ -2,7 +2,8 @@ use std::error::Error;
 
 use tauri::{async_runtime, Builder, generate_context, generate_handler};
 use tokio::runtime::Handle;
-use tracing::{error, info};
+use tokio::task::block_in_place;
+use tracing::info;
 
 use crate::core::init_core;
 
@@ -14,14 +15,12 @@ pub fn init_backend() -> Result<(), Box<dyn Error>> {
     info!("setting up client backend");
     Builder::default()
         .setup(|app| {
-            match init_core(app) {
-                Ok(_) => info!("core init successful"),
-                Err(e) => {
-                    error!("core init failed: {}", e);
-                    return Err(e.into());
-                }
+            block_in_place(move || {
+                Handle::current().block_on(async move {
+                    init_core(app).await.map_err(|e| e.into())
+                })
             }
-            Ok(())
+            )
         })
         .invoke_handler(generate_handler![
             discover::get_discovered_clients,

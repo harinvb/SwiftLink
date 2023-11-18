@@ -1,20 +1,20 @@
 use std::error::Error;
 
-use libp2p::{identity::Keypair, mdns::Config as MdnsConfig, PeerId, StreamProtocol, swarm::NetworkBehaviour};
+use libp2p::{identity::Keypair, mdns::Config as MdnsConfig, PeerId, StreamProtocol, Swarm, swarm::NetworkBehaviour};
 use libp2p::request_response::{Config as ReqRespConfig, ProtocolSupport};
 use libp2p::swarm::SwarmEvent;
 use tracing::info;
 
-use crate::core::Context;
+use crate::core::{Context, SLSwarm};
 
-use super::cbor_behaviour::CborReqResp;
-use super::mdns_behaviour::{Mdns,process_mdns_event};
+use super::cbor_behaviour::{CborReqResp, process_cbor_event};
+use super::mdns_behaviour::{Mdns, process_mdns_event};
 
 #[derive(NetworkBehaviour)]
 pub struct SwiftLink {
-    mdns: Mdns,
+    pub mdns: Mdns,
     // gossipsub: Gossipsub,
-    cbor: CborReqResp,
+    pub cbor: CborReqResp,
 }
 
 impl SwiftLink {
@@ -32,14 +32,16 @@ impl SwiftLink {
     }
 }
 
-pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>) {
+pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm: &mut SLSwarm) {
     match event {
         SwarmEvent::Behaviour(swift_link_event) => {
             match swift_link_event {
                 SwiftLinkEvent::Mdns(event) => {
-                    process_mdns_event(context, event);
+                    process_mdns_event(context, event,swarm);
                 }
-                SwiftLinkEvent::Cbor(_) => {}
+                SwiftLinkEvent::Cbor(event) => {
+                    process_cbor_event(context, event,swarm);
+                }
             }
         }
         SwarmEvent::ConnectionEstablished {
