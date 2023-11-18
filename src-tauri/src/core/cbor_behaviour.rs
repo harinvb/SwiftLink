@@ -10,13 +10,13 @@ pub enum Action {
 
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Request {
+pub struct Request {
     action: Action,
 }
 
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Response {
+pub struct Response {
     action: Action,
 }
 

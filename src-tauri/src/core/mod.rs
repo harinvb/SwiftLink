@@ -12,7 +12,7 @@ mod cbor_behaviour;
 mod mdns_behaviour;
 
 #[derive(Debug, Clone)]
-struct Context {
+pub struct Context {
     pub app_handle: AppHandle,
 }
 
@@ -54,6 +54,7 @@ fn spawn_process(context: &Context, mut swarm: Swarm<SwiftLink>) {
     let context = context.clone();
     spawn(async move {
         loop {
+            let context = context.clone();
             match swarm.next().await {
                 Some(event) => {
                     spawn(async move {
@@ -85,7 +86,7 @@ fn init_swarm() -> Result<Swarm<SwiftLink>> {
             yamux::Config::default,
         )?
         // Behaviour Config
-        .with_behaviour(|key| SwiftLink::new(&key).unwrap())?
+        .with_behaviour(|key| SwiftLink::new(key).unwrap())?
         // Swarm Config
         .with_swarm_config(|cfg| {
             // Edit cfg here.

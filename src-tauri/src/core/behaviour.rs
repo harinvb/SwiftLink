@@ -21,7 +21,7 @@ impl SwiftLink {
     pub fn new(key: &Keypair) -> Result<Self, Box<dyn Error>> {
         let peer_id = PeerId::from(&key.public());
         let mdns = Mdns::new(MdnsConfig::default(),
-                             peer_id.clone())?;
+                             peer_id)?;
         // let gossipsub = Gossipsub::new(
         //     MessageAuthenticity::Author(peer_id),
         //     GossipsubConfig::default(),
