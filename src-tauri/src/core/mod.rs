@@ -14,6 +14,7 @@ use crate::core::behaviour::SLSwarm;
 mod behaviour;
 mod json_behaviour;
 mod mdns_behaviour;
+mod gossipsub_behaviour;
 
 
 #[derive(Clone)]

@@ -1,21 +1,42 @@
 use std::error::Error;
 
-use libp2p::{identity::Keypair, mdns::Config as MdnsConfig, PeerId, StreamProtocol, Swarm, swarm::NetworkBehaviour};
-use libp2p::request_response::{Config as ReqRespConfig, ProtocolSupport};
-use libp2p::swarm::SwarmEvent;
+use libp2p::{
+    gossipsub::{
+        Config as GossipsubConfig,
+        MessageAuthenticity,
+        IdentTopic
+    },
+    identity::Keypair,
+    mdns::Config as MdnsConfig,
+    PeerId,
+    request_response::{Config as ReqRespConfig, ProtocolSupport},
+    StreamProtocol,
+    Swarm,
+    swarm::{
+        NetworkBehaviour,
+        SwarmEvent
+    }
+};
 use tracing::{error, info};
 
-use crate::core::{Context};
+use crate::core::{
+    gossipsub_behaviour::{
+        Gossipsub,
+        process_gossipsub_event
+    },
+    Context,
+    json_behaviour::{JsonReqResp, process_json_event, exchange_info},
+    mdns_behaviour::{Mdns, process_mdns_event}
+    }
+;
 
-use super::json_behaviour::{exchange_info, JsonReqResp, process_json_event};
-use super::mdns_behaviour::{Mdns, process_mdns_event};
 
 pub type SLSwarm = Swarm<SwiftLink>;
 
 #[derive(NetworkBehaviour)]
 pub struct SwiftLink {
     pub mdns: Mdns,
-    // gossipsub: Gossipsub,
+    gossipsub: Gossipsub,
     pub json: JsonReqResp,
 }
 
@@ -25,17 +46,19 @@ impl SwiftLink {
         let mdns_config = MdnsConfig { query_interval: std::time::Duration::from_secs(2), ..Default::default() };
         let mdns = Mdns::new(mdns_config,
                              peer_id)?;
-        // let gossipsub = Gossipsub::new(
-        //     MessageAuthenticity::Author(peer_id),
-        //     GossipsubConfig::default(),
-        // )?;
+        let gossipsub = Gossipsub::new(
+            MessageAuthenticity::Author(peer_id),
+            GossipsubConfig::default(),
+        )?;
         let json = JsonReqResp::new([(StreamProtocol::new("/slink/1.0"),
                                       ProtocolSupport::Full)], ReqRespConfig::default());
-        Ok(Self { mdns, json })
+        Ok(Self { mdns, json, gossipsub })
     }
 }
 
 pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm: &mut SLSwarm) {
+    let slink_topic = IdentTopic::new("slink");
+    swarm.behaviour_mut().gossipsub.subscribe(&slink_topic).expect("failed to subscribe to root gossipsub topic");
     match event {
         SwarmEvent::Behaviour(swift_link_event) => {
             match swift_link_event {
@@ -44,6 +67,9 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
                 }
                 SwiftLinkEvent::Json(event) => {
                     process_json_event(context, event, swarm);
+                }
+                SwiftLinkEvent::Gossipsub(event) => {
+                    process_gossipsub_event(context, event, swarm);
                 }
             }
         }

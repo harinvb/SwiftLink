@@ -35,7 +35,7 @@ pub enum Response {
 
 pub fn process_json_event(_context: Context, event: CborEvent, swarm: &mut SLSwarm) {
     match event {
-        Event::Message { peer, message } => {
+        Event::Message { message, .. } => {
             match message {
                 Message::Request { request, channel, .. } => {
                     let behaviour = swarm.behaviour_mut();
