@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use libp2p::{futures::StreamExt, noise, Swarm, SwarmBuilder, yamux};
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
-use tauri::{App, AppHandle};
+use tauri::{App, AppHandle, Manager};
 use tokio::spawn;
 use tracing::info;
 
@@ -33,7 +33,7 @@ impl Context {
 
 pub async fn init_core(app: &mut App) -> Result<()> {
     info!("checking db");
-    let mut app_handle = app.handle();
+    let mut app_handle = app.handle().clone();
     let db_url = create_or_get_db(app_handle).await?;
     info!("db url: {}", db_url);
     let sqlite = SqlitePool::connect(&db_url).await?;
@@ -42,7 +42,7 @@ pub async fn init_core(app: &mut App) -> Result<()> {
     info!("swarm profile initialized");
     bind(&mut swarm)?;
     info!("core initialized successfully");
-    app_handle = app.handle();
+    app_handle = app.handle().clone();
     let context = Context::new(app_handle, sqlite).await?;
     info!("context created successfully");
     spawn_process(context,swarm);
@@ -52,8 +52,8 @@ pub async fn init_core(app: &mut App) -> Result<()> {
 }
 
 pub async fn create_or_get_db(handle: AppHandle) -> Result<String> {
-    let path_resolver = handle.path_resolver();
-    let db_path = path_resolver.app_local_data_dir().ok_or(anyhow!("failed to get app local data dir"))?
+    let path_resolver = handle.path();
+    let db_path = path_resolver.app_local_data_dir()?
         .join("slink.db");
     let db_url = db_path.to_str().ok_or(anyhow!("db path is not valid utf8"))?;
     if !Sqlite::database_exists(db_url).await.unwrap_or(false) {
