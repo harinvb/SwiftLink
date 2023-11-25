@@ -37,7 +37,7 @@ pub async fn init_core(app: &mut App) -> Result<()> {
     info!("db url: {}", db_url);
     let sqlite = SqlitePool::connect(&db_url).await?;
     info!("initializing core backend");
-    let mut swarm = init_swarm().await?;
+    let mut swarm = init_swarm()?;
     info!("swarm profile initialized");
     bind(&mut swarm)?;
     info!("core initialized successfully");
@@ -84,7 +84,7 @@ fn bind(swarm: &mut SLSwarm) -> Result<()> {
     Ok(())
 }
 
-async fn init_swarm() -> Result<SLSwarm> {
+fn init_swarm() -> Result<SLSwarm> {
     let swarm = SwarmBuilder::with_new_identity()
         // Runtime Config
         .with_tokio()
@@ -95,15 +95,14 @@ async fn init_swarm() -> Result<SLSwarm> {
             yamux::Config::default,
         )?
         .with_dns()?
-        .with_websocket(
-            tls::Config::new,
-            yamux::Config::default).await?
         // Behaviour Config
         .with_behaviour(|key| SwiftLink::new(key).unwrap())?
         // Swarm Config
         .with_swarm_config(|cfg| {
             // Edit cfg here.
-            cfg.with_idle_connection_timeout(Duration::from_secs(10))
+            cfg.with_idle_connection_timeout(Duration::from_secs( 3 * 60));
+            cfg.with_dial_concurrency_factor(10.into());
+            cfg
         })
         .build();
     Ok(swarm)
