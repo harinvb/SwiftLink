@@ -12,13 +12,6 @@ pub fn process_mdns_event(_context: Context, event: Event, swarm: &mut SLSwarm) 
         Event::Discovered(peers) => {
             for (peer_id, multiaddr) in peers {
                 //TODO: Initiate info exchange with peer
-                // swarm.add_external_address(multiaddr);
-                let e = swarm.dial(DialOpts::unknown_peer_id().address(multiaddr.clone()).build());
-                if let Err(e) = e {
-                    info!("error dialing peer: {}", e);
-                } else {
-                    info!("dialed peer: {}", peer_id);
-                }
                 let behaviour = swarm.behaviour_mut();
                 behaviour.json.add_address(&peer_id, multiaddr);
                 behaviour.json.send_request(
