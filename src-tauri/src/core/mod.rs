@@ -78,7 +78,7 @@ fn spawn_process(context: Context, mut swarm: SLSwarm) {
 }
 
 fn bind(swarm: &mut SLSwarm) -> Result<()> {
-    swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
+    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
     swarm.listen_on("/ip6/::/tcp/0".parse()?)?;
     Ok(())
 }
