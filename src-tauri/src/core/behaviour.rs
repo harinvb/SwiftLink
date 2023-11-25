@@ -7,7 +7,7 @@ use tracing::{error, info};
 
 use crate::core::{Context};
 
-use super::json_behaviour::{JsonReqResp, process_json_event};
+use super::json_behaviour::{exchange_info, JsonReqResp, process_json_event};
 use super::mdns_behaviour::{Mdns, process_mdns_event};
 
 pub type SLSwarm = Swarm<SwiftLink>;
@@ -57,6 +57,8 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
             info!("connection established: peer_id: {}, num_established: {}, connection_id: {}, established_in: {:?}",
                 peer_id, num_established,
                 connection_id, established_in);
+            exchange_info(swarm, &peer_id);
+            info!("sent a peer info request to {}", peer_id);
         }
         SwarmEvent::ConnectionClosed { peer_id, connection_id, num_established, cause, endpoint } => {
             info!("connection closed: peer_id: {}, connection_id: {}, num_established: {}, cause: {:?}, endpoint: {:?}",peer_id, connection_id, num_established, cause, endpoint);
@@ -99,3 +101,4 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
         }
     };
 }
+

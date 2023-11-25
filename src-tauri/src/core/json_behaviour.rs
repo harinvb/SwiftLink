@@ -1,3 +1,4 @@
+use libp2p::PeerId;
 use libp2p::request_response::{Event, Message, ResponseChannel};
 use libp2p::request_response::json::Behaviour;
 use serde::{Deserialize, Serialize};
@@ -82,4 +83,16 @@ pub fn respond_to_request(req: Request, channel: Channel, behaviour: &mut SwiftL
             info!("received ExchangeInfo request from {} for {}",username,device_name);
         }
     };
+}
+
+pub fn exchange_info(swarm: &mut SLSwarm, peer_id: &PeerId) {
+    let behaviour = swarm.behaviour_mut();
+    behaviour.json.send_request(
+        &peer_id,
+        Request::ExchangeInfo {
+            username: "test".to_string(),
+            device_name: "test".to_string(),
+        },
+    );
+    info!("sent a peer info request to {}", peer_id);
 }
