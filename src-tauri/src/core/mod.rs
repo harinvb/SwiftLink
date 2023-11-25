@@ -1,3 +1,4 @@
+use std::num::NonZeroU8;
 use std::time::Duration;
 use anyhow::{anyhow, Result};
 use libp2p::{futures::StreamExt, SwarmBuilder, tls, yamux};
@@ -101,7 +102,7 @@ fn init_swarm() -> Result<SLSwarm> {
         .with_swarm_config(|cfg| {
             // Edit cfg here.
             cfg.with_idle_connection_timeout(Duration::from_secs( 3 * 60));
-            cfg.with_dial_concurrency_factor(10.into());
+            cfg.with_dial_concurrency_factor(NonZeroU8::new(10).expect("10 > 0"));
             cfg
         })
         .build();
