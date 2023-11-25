@@ -1,18 +1,17 @@
 use anyhow::{anyhow, Result};
-use libp2p::{futures::StreamExt, noise, SwarmBuilder, yamux};
+use libp2p::{futures::StreamExt, SwarmBuilder, tls, yamux};
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tauri::{App, AppHandle, Manager};
 use tokio::spawn;
 use tracing::info;
 
 use behaviour::SwiftLink;
+
 use crate::core::behaviour::SLSwarm;
 
 mod behaviour;
 mod json_behaviour;
 mod mdns_behaviour;
-
-
 
 
 #[derive(Clone)]
@@ -25,7 +24,7 @@ impl Context {
     async fn new(app: AppHandle, db: Pool<Sqlite>) -> Result<Self> {
         Ok(Self {
             app_handle: app,
-            db
+            db,
         })
     }
 }
@@ -37,14 +36,14 @@ pub async fn init_core(app: &mut App) -> Result<()> {
     info!("db url: {}", db_url);
     let sqlite = SqlitePool::connect(&db_url).await?;
     info!("initializing core backend");
-    let mut swarm = init_swarm()?;
+    let mut swarm = init_swarm().await?;
     info!("swarm profile initialized");
     bind(&mut swarm)?;
     info!("core initialized successfully");
     app_handle = app.handle().clone();
     let context = Context::new(app_handle, sqlite).await?;
     info!("context created successfully");
-    spawn_process(context,swarm);
+    spawn_process(context, swarm);
     info!("process spawned successfully");
     // app.get_window("splashscreen").unwrap().close()?;
     Ok(())
@@ -68,7 +67,7 @@ fn spawn_process(context: Context, mut swarm: SLSwarm) {
             let context = context.clone();
             match swarm.next().await {
                 Some(event) => {
-                    behaviour::process_event(context.clone(), event,&mut swarm)
+                    behaviour::process_event(context.clone(), event, &mut swarm)
                 }
                 None => {
                     info!("swarm returned none");
@@ -84,16 +83,20 @@ fn bind(swarm: &mut SLSwarm) -> Result<()> {
     Ok(())
 }
 
-fn init_swarm() -> Result<SLSwarm> {
+async fn init_swarm() -> Result<SLSwarm> {
     let swarm = SwarmBuilder::with_new_identity()
         // Runtime Config
         .with_tokio()
         // TCP Config
         .with_tcp(
             Default::default(),
-            noise::Config::new,
+            tls::Config::new,
             yamux::Config::default,
         )?
+        .with_dns()?
+        .with_websocket(
+            tls::Config::new,
+            yamux::Config::default).await?
         // Behaviour Config
         .with_behaviour(|key| SwiftLink::new(key).unwrap())?
         // Swarm Config

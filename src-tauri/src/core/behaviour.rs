@@ -3,7 +3,7 @@ use std::error::Error;
 use libp2p::{identity::Keypair, mdns::Config as MdnsConfig, PeerId, StreamProtocol, Swarm, swarm::NetworkBehaviour};
 use libp2p::request_response::{Config as ReqRespConfig, ProtocolSupport};
 use libp2p::swarm::SwarmEvent;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::core::{Context};
 
@@ -58,15 +58,39 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
                 peer_id, num_established,
                 connection_id, established_in);
         }
-        SwarmEvent::ConnectionClosed { .. } => {}
-        SwarmEvent::IncomingConnection { .. } => {}
-        SwarmEvent::IncomingConnectionError { .. } => {}
-        SwarmEvent::OutgoingConnectionError { .. } => {}
-        SwarmEvent::NewListenAddr { .. } => {}
-        SwarmEvent::ExpiredListenAddr { .. } => {}
-        SwarmEvent::ListenerClosed { .. } => {}
-        SwarmEvent::ListenerError { .. } => {}
-        SwarmEvent::Dialing { .. } => {}
+        SwarmEvent::ConnectionClosed { peer_id, connection_id, num_established, cause, endpoint } => {
+            info!("connection closed: peer_id: {}, connection_id: {}, num_established: {}, cause: {:?}, endpoint: {:?}",peer_id, connection_id, num_established, cause, endpoint);
+        }
+        SwarmEvent::IncomingConnection { connection_id, local_addr, send_back_addr } => {
+            info!("incoming connection: connection_id: {}, local_addr: {}, send_back_addr: {}",connection_id,local_addr,send_back_addr);
+        }
+        SwarmEvent::IncomingConnectionError { connection_id, error, local_addr, send_back_addr } => {
+            error!("incoming connection error: connection_id: {}, local_addr: {}, send_back_addr: {}, error: {}",connection_id,local_addr,send_back_addr,error);
+        }
+        SwarmEvent::OutgoingConnectionError { peer_id, connection_id, error } => {
+            let mut peer = "Unknown".to_string();
+            if let Some(p) = peer_id {
+                peer = p.to_string();
+            }
+            error!("outgoing connection error: peer_id: {}, connection_id: {}, error: {}",peer,connection_id,error);
+        }
+        SwarmEvent::NewListenAddr { address, .. } => {
+            info!("new listen address: {}", address);
+        }
+        SwarmEvent::ExpiredListenAddr { address, .. } => {
+            info!("expired listen address: {}", address);
+        }
+        SwarmEvent::ListenerClosed { addresses, .. } => {
+            for address in addresses {
+                info!("listener closed: {}", address);
+            }
+        }
+        SwarmEvent::ListenerError { error, .. } => {
+            error!("listener error: {}", error);
+        }
+        SwarmEvent::Dialing { connection_id, peer_id } => {
+            info!("dialing: connection_id: {}, peer_id: {}", connection_id, peer_id.unwrap());
+        }
         SwarmEvent::NewExternalAddrCandidate { .. } => {}
         SwarmEvent::ExternalAddrConfirmed { .. } => {}
         SwarmEvent::ExternalAddrExpired { .. } => {}
