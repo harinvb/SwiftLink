@@ -102,7 +102,6 @@ fn init_swarm() -> Result<SLSwarm> {
         .with_swarm_config(|cfg| {
             // Edit cfg here.
             cfg.with_idle_connection_timeout(Duration::from_secs( 3 * 60));
-            cfg.with_dial_concurrency_factor(NonZeroU8::new(10).expect("10 > 0"));
             cfg
         })
         .build();
