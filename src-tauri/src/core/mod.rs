@@ -1,3 +1,4 @@
+use std::time::Duration;
 use anyhow::{anyhow, Result};
 use libp2p::{futures::StreamExt, SwarmBuilder, tls, yamux};
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
@@ -102,7 +103,7 @@ async fn init_swarm() -> Result<SLSwarm> {
         // Swarm Config
         .with_swarm_config(|cfg| {
             // Edit cfg here.
-            cfg
+            cfg.with_idle_connection_timeout(Duration::from_secs(10))
         })
         .build();
     Ok(swarm)
