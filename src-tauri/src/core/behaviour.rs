@@ -1,22 +1,13 @@
 use std::error::Error;
 
-use libp2p::{
-    gossipsub::{
-        Config as GossipsubConfig,
-        MessageAuthenticity,
-        IdentTopic
-    },
-    identity::Keypair,
-    mdns::Config as MdnsConfig,
-    PeerId,
-    request_response::{Config as ReqRespConfig, ProtocolSupport},
-    StreamProtocol,
-    Swarm,
-    swarm::{
-        NetworkBehaviour,
-        SwarmEvent
-    }
-};
+use libp2p::{gossipsub::{
+    Config as GossipsubConfig,
+    MessageAuthenticity,
+    IdentTopic
+}, identity::Keypair, mdns::Config as MdnsConfig, PeerId, request_response::{Config as ReqRespConfig, ProtocolSupport}, StreamProtocol, Swarm, swarm::{
+    NetworkBehaviour,
+    SwarmEvent
+}};
 use tracing::{error, info};
 
 use crate::core::{
@@ -47,7 +38,7 @@ impl SwiftLink {
         let mdns = Mdns::new(mdns_config,
                              peer_id)?;
         let gossipsub = Gossipsub::new(
-            MessageAuthenticity::Author(peer_id),
+            MessageAuthenticity::Signed(key.clone()),
             GossipsubConfig::default(),
         )?;
         let json = JsonReqResp::new([(StreamProtocol::new("/slink/1.0"),
