@@ -610,15 +610,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cbor4ii"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13e8c816014cad3f58c2f0607677e8d2c6f76754dd8e735461a440b27b95199c"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2828,7 +2819,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "198a07e045ca23ad3cdb0f54ef3dfb5750056e63af06803d189b0393f865f461"
 dependencies = [
  "async-trait",
- "cbor4ii",
  "futures",
  "futures-bounded",
  "futures-timer",
@@ -2838,6 +2828,7 @@ dependencies = [
  "libp2p-swarm",
  "rand 0.8.5",
  "serde",
+ "serde_json",
  "smallvec",
  "tracing",
  "void",

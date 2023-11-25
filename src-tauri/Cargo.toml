@@ -22,7 +22,7 @@ libp2p = { version = "0.53.1", features = [
     "mdns",
     "tcp",
     "request-response",
-    "cbor",
+    "json",
     "macros",
 ] }
 tokio = { version = "1.34.0", features = ["full"] }

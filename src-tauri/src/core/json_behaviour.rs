@@ -1,12 +1,12 @@
 use libp2p::request_response::{Event, Message, ResponseChannel};
-use libp2p::request_response::cbor::Behaviour;
+use libp2p::request_response::json::Behaviour;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 use crate::core::{Context, SLSwarm};
 use crate::core::behaviour::SwiftLink;
 
-pub type CborReqResp = Behaviour<Request, Response>;
+pub type JsonReqResp = Behaviour<Request, Response>;
 
 pub type CborEvent = Event<Request, Response>;
 
@@ -32,7 +32,7 @@ pub enum Response {
 }
 
 
-pub fn process_cbor_event(_context: Context, event: CborEvent, swarm: &mut SLSwarm) {
+pub fn process_json_event(_context: Context, event: CborEvent, swarm: &mut SLSwarm) {
     match event {
         Event::Message { peer, message } => {
             match message {
@@ -69,7 +69,7 @@ pub fn respond_to_request(req: Request, channel: Channel, behaviour: &mut SwiftL
     match req {
         Request::SendFileRequest { filename } => {
             let response = Response::SendFileResponse { accept: true };
-            match behaviour.cbor.send_response(channel, response) {
+            match behaviour.json.send_response(channel, response) {
                 Ok(_) => {
                     info!("successfully sent response for SendFileRequest: {}",filename);
                 }

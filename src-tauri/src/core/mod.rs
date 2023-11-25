@@ -1,20 +1,19 @@
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
-use libp2p::{futures::StreamExt, noise, Swarm, SwarmBuilder, yamux};
+use libp2p::{futures::StreamExt, noise, SwarmBuilder, yamux};
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tauri::{App, AppHandle, Manager};
 use tokio::spawn;
 use tracing::info;
 
 use behaviour::SwiftLink;
+use crate::core::behaviour::SLSwarm;
 
 mod behaviour;
-mod cbor_behaviour;
+mod json_behaviour;
 mod mdns_behaviour;
 
 
-pub type SLSwarm = Swarm<SwiftLink>;
+
 
 #[derive(Clone)]
 pub struct Context {
