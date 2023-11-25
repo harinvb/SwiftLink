@@ -99,9 +99,10 @@ fn init_swarm() -> Result<SLSwarm> {
         // Behaviour Config
         .with_behaviour(|key| SwiftLink::new(key).unwrap())?
         // Swarm Config
-        .with_swarm_config(|cfg| {
+        .with_swarm_config(|mut cfg| {
             // Edit cfg here.
-            cfg.with_idle_connection_timeout(Duration::from_secs( 3 * 60));
+            cfg = cfg.with_idle_connection_timeout(Duration::from_secs( 3 * 60));
+            cfg = cfg.with_dial_concurrency_factor(NonZeroU8::new(10).unwrap());
             cfg
         })
         .build();
