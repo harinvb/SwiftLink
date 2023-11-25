@@ -1,7 +1,7 @@
 use std::num::NonZeroU8;
 use std::time::Duration;
 use anyhow::{anyhow, Result};
-use libp2p::{futures::StreamExt, SwarmBuilder, tls, yamux};
+use libp2p::{futures::StreamExt, SwarmBuilder, tcp, tls, yamux};
 use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
 use tauri::{App, AppHandle, Manager};
 use tokio::spawn;
@@ -82,7 +82,7 @@ fn spawn_process(context: Context, mut swarm: SLSwarm) {
 
 fn bind(swarm: &mut SLSwarm) -> Result<()> {
     swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
-    swarm.listen_on("/ip6/::/tcp/0".parse()?)?;
+    // swarm.listen_on("/ip6/::/tcp/0".parse()?)?;
     Ok(())
 }
 
@@ -92,7 +92,7 @@ fn init_swarm() -> Result<SLSwarm> {
         .with_tokio()
         // TCP Config
         .with_tcp(
-            Default::default(),
+            tcp::Config::default().port_reuse(true),
             tls::Config::new,
             yamux::Config::default,
         )?

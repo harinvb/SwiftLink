@@ -13,7 +13,6 @@ pub fn process_mdns_event(_context: Context, event: Event, _swarm: &mut SLSwarm)
             let mut _peer_map = HashMap::new();
             for (peer_id, multiaddr) in peers {
                 //TODO: Initiate info exchange with peer
-                info!("discovered peer: {:?} with multiaddr: {:?}", peer_id, multiaddr);
                 if !_peer_map.contains_key(&peer_id) {
                     _peer_map.insert(peer_id.clone(), vec![]);
                 }
