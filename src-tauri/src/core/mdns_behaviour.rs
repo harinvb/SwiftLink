@@ -7,24 +7,17 @@ use crate::core::{Context, SLSwarm};
 
 pub type Mdns = libp2p::mdns::tokio::Behaviour;
 
-pub fn process_mdns_event(_context: Context, event: Event, _swarm: &mut SLSwarm) {
+pub fn process_mdns_event(_context: Context, event: Event, swarm: &mut SLSwarm) {
     match event {
         Event::Discovered(peers) => {
-            let mut _peer_map = HashMap::new();
-            for (peer_id, multiaddr) in peers {
-                //TODO: Initiate info exchange with peer
-                if !_peer_map.contains_key(&peer_id) {
-                    _peer_map.insert(peer_id.clone(), vec![]);
-                }
-                match _peer_map.get_mut(&peer_id) {
-                    Some(vec) => vec.push(multiaddr),
-                    None => error!("error adding multiaddr to peer map"),
-                }
+            for (_, multiaddr) in peers {
+                swarm.add_external_address(multiaddr);
                 //TODO: Add peer and info to local db
             }
         }
         Event::Expired(peers) => {
-            for (_peer_id, _multiaddr) in peers {
+            for (_, multiaddr) in peers {
+                swarm.remove_external_address(&multiaddr);
                 //TODO: Remove peers from local db
             }
         }

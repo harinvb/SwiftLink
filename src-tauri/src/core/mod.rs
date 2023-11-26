@@ -1,8 +1,8 @@
+use anyhow::{anyhow, Result};
+use libp2p::{tcp, tls, yamux, SwarmBuilder};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use std::num::NonZeroU8;
 use std::time::Duration;
-use anyhow::{anyhow, Result};
-use libp2p::{SwarmBuilder, tcp, tls, yamux};
-use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use tauri::{App, AppHandle, Manager};
 use tracing::info;
 use tracing::log::LevelFilter;
@@ -14,10 +14,9 @@ use migration::{Migrator, MigratorTrait};
 use crate::core::behaviour::SLSwarm;
 
 mod behaviour;
+mod gossipsub_behaviour;
 mod json_behaviour;
 mod mdns_behaviour;
-mod gossipsub_behaviour;
-
 
 #[derive(Clone)]
 pub struct Context {
@@ -63,7 +62,7 @@ pub async fn init_db(db_url: String) -> Result<DatabaseConnection> {
         .idle_timeout(Duration::from_secs(5 * 60))
         .max_lifetime(Duration::from_secs(60 * 60))
         .sqlx_logging(true)
-        .sqlx_logging_level(LevelFilter::Warn);
+        .sqlx_logging_level(LevelFilter::Trace);
     let db = Database::connect(opt).await?;
     Migrator::up(&db, None).await?;
     Ok(db)
@@ -74,7 +73,9 @@ pub async fn create_or_get_db_url(handle: AppHandle) -> Result<String> {
     let mut db_path = path_resolver.app_data_dir()?;
     tokio::fs::create_dir_all(&db_path).await?;
     db_path.push("swiftlink.db");
-    let db_url = db_path.to_str().ok_or(anyhow!("db path is not valid utf8"))?;
+    let db_url = db_path
+        .to_str()
+        .ok_or(anyhow!("db path is not valid utf8"))?;
     Ok(db_url.to_string())
 }
 
