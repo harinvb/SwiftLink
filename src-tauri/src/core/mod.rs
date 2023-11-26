@@ -91,7 +91,7 @@ fn init_swarm() -> Result<SLSwarm> {
         .with_tokio()
         // TCP Config
         .with_tcp(
-            tcp::Config::default().port_reuse(true),
+            tcp::Config::default(),
             tls::Config::new,
             yamux::Config::default,
         )?
