@@ -169,8 +169,11 @@ pub fn spawn_behaviour_process(context: Context, mut swarm: SLSwarm) {
                         process_event(context.clone(), event, &mut swarm)
                     },
                 _ = interval.tick() => {
-                    let core_topic = IdentTopic::new("slink");
-                    swarm.behaviour_mut().gossipsub.publish(core_topic, "hello world").expect("failed to publish to root gossipsub topic");
+                    let connected_peer_cnt = swarm.connected_peers().count();
+                    if connected_peer_cnt >0 {
+                        let core_topic = IdentTopic::new("slink");
+                        swarm.behaviour_mut().gossipsub.publish(core_topic, "hello world").expect("failed to publish to root gossipsub topic");
+                    }
                 }
             }
         }

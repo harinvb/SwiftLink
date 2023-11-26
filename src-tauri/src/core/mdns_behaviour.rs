@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use libp2p::mdns::Event;
-use tracing::{error};
 
 use crate::core::{Context, SLSwarm};
 
