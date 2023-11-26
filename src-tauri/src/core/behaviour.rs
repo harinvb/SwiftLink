@@ -161,7 +161,7 @@ pub fn spawn_behaviour_process(context: Context, mut swarm: SLSwarm) {
         .gossipsub
         .subscribe(&core_topic)
         .expect("failed to subscribe to root gossipsub topic");
-    let mut interval = interval(Duration::from_secs(5));
+    let mut interval = interval(Duration::from_secs(15));
     spawn(async move {
         loop {
             select! {
