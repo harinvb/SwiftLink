@@ -1,7 +1,7 @@
 use std::num::NonZeroU8;
 use std::time::Duration;
 use anyhow::{anyhow, Result};
-use libp2p::{futures::StreamExt, SwarmBuilder, tcp, tls, yamux};
+use libp2p::{SwarmBuilder, tcp, tls, yamux};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use tauri::{App, AppHandle, Manager};
 use tracing::info;

@@ -9,7 +9,7 @@ pub type Gossipsub = Behaviour;
 
 pub fn process_gossipsub_event(_context: Context, event: Event, _swarm: &mut SLSwarm) {
     match event {
-        Event::Message { message_id,message,propagation_source } => {
+        Event::Message { message,propagation_source,.. } => {
             info!("Got message: {} from {}", String::from_utf8_lossy(&message.data), propagation_source);
         }
         Event::Subscribed { peer_id,topic } => {
