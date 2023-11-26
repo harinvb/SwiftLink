@@ -3,19 +3,21 @@ use std::time::Duration;
 
 use libp2p::futures::StreamExt;
 use libp2p::{
-    gossipsub::{Config as GossipsubConfig, IdentTopic, MessageAuthenticity},
+    // gossipsub::{Config as GossipsubConfig, IdentTopic, MessageAuthenticity},
     identity::Keypair,
     mdns::Config as MdnsConfig,
     request_response::{Config as ReqRespConfig, ProtocolSupport},
     swarm::{NetworkBehaviour, SwarmEvent},
-    PeerId, StreamProtocol, Swarm,
+    PeerId,
+    StreamProtocol,
+    Swarm,
 };
-use tokio::time::interval;
+// use tokio::time::interval;
 use tokio::{select, spawn};
 use tracing::{error, info};
 
 use crate::core::{
-    gossipsub_behaviour::{process_gossipsub_event, Gossipsub},
+    // gossipsub_behaviour::{process_gossipsub_event, Gossipsub},
     json_behaviour::{exchange_info, process_json_event, JsonReqResp},
     mdns_behaviour::{process_mdns_event, Mdns},
     Context,
@@ -25,7 +27,7 @@ pub type SLSwarm = Swarm<SwiftLink>;
 
 #[derive(NetworkBehaviour)]
 pub struct SwiftLink {
-    pub gossipsub: Gossipsub,
+    // pub gossipsub: Gossipsub,
     pub json: JsonReqResp,
     pub mdns: Mdns,
 }
@@ -34,14 +36,14 @@ impl SwiftLink {
     pub fn new(key: &Keypair) -> Result<Self, Box<dyn Error>> {
         let peer_id = PeerId::from(&key.public());
         let mdns_config = MdnsConfig {
-            query_interval: Duration::from_secs(2),
+            query_interval: Duration::from_secs(10),
             ..Default::default()
         };
         let mdns = Mdns::new(mdns_config, peer_id)?;
-        let gossipsub = Gossipsub::new(
-            MessageAuthenticity::Signed(key.clone()),
-            GossipsubConfig::default(),
-        )?;
+        // let gossipsub = Gossipsub::new(
+        //     MessageAuthenticity::Signed(key.clone()),
+        //     GossipsubConfig::default(),
+        // )?;
         let json = JsonReqResp::new(
             [(StreamProtocol::new("/slink/1.0"), ProtocolSupport::Full)],
             ReqRespConfig::default(),
@@ -49,7 +51,7 @@ impl SwiftLink {
         Ok(Self {
             mdns,
             json,
-            gossipsub,
+            // gossipsub,
         })
     }
 }
@@ -62,10 +64,9 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
             }
             SwiftLinkEvent::Json(event) => {
                 process_json_event(context, event, swarm);
-            }
-            SwiftLinkEvent::Gossipsub(event) => {
-                process_gossipsub_event(context, event, swarm);
-            }
+            } // SwiftLinkEvent::Gossipsub(event) => {
+              //     process_gossipsub_event(context, event, swarm);
+              // }
         },
         SwarmEvent::ConnectionEstablished {
             peer_id,
@@ -161,27 +162,27 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
 }
 
 pub fn spawn_behaviour_process(context: Context, mut swarm: SLSwarm) {
-    swarm
-        .behaviour_mut()
-        .gossipsub
-        .subscribe(&IdentTopic::new("slink"))
-        .expect("failed to subscribe to root gossipsub topic");
-    let mut interval = interval(Duration::from_secs(5));
+    // swarm
+    //     .behaviour_mut()
+    //     .gossipsub
+    //     .subscribe(&IdentTopic::new("slink"))
+    //     .expect("failed to subscribe to root gossipsub topic");
+    // let mut interval = interval(Duration::from_secs(5));
     spawn(async move {
         loop {
             select! {
                 event = swarm.select_next_some() => {
                         process_event(context.clone(), event, &mut swarm)
                     },
-                _ = interval.tick() => {
-                    let connected_peer_cnt = swarm.connected_peers().count();
-                    if connected_peer_cnt > 0 {
-                        let core_topic = IdentTopic::new("slink");
-                        if let Err(e) = swarm.behaviour_mut().gossipsub.publish(core_topic, "hello world") {
-                            error!("failed to publish to gossipsub: {}", e);
-                        }
-                    }
-                }
+                // _ = interval.tick() => {
+                //     let connected_peer_cnt = swarm.connected_peers().count();
+                //     if connected_peer_cnt > 0 {
+                //         let core_topic = IdentTopic::new("slink");
+                //         if let Err(e) = swarm.behaviour_mut().gossipsub.publish(core_topic, "hello world") {
+                //             error!("failed to publish to gossipsub: {}", e);
+                //         }
+                //     }
+                // }
             }
         }
     });
