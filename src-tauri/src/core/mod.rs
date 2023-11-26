@@ -4,7 +4,6 @@ use anyhow::{anyhow, Result};
 use libp2p::{futures::StreamExt, SwarmBuilder, tcp, tls, yamux};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use tauri::{App, AppHandle, Manager};
-use tokio::spawn;
 use tracing::info;
 use tracing::log::LevelFilter;
 
@@ -49,7 +48,7 @@ pub async fn init_core(app: &mut App) -> Result<()> {
     app_handle = app.handle().clone();
     let context = Context::new(app_handle, db);
     info!("context created successfully");
-    spawn_process(context, swarm);
+    behaviour::spawn_behaviour_process(context, swarm);
     info!("process spawned successfully");
     // app.get_window("splashscreen").unwrap().close()?;
     Ok(())
@@ -64,7 +63,7 @@ pub async fn init_db(db_url: String) -> Result<DatabaseConnection> {
         .idle_timeout(Duration::from_secs(5 * 60))
         .max_lifetime(Duration::from_secs(60 * 60))
         .sqlx_logging(true)
-        .sqlx_logging_level(LevelFilter::Info);
+        .sqlx_logging_level(LevelFilter::Warn);
     let db = Database::connect(opt).await?;
     Migrator::up(&db, None).await?;
     Ok(db)
@@ -77,22 +76,6 @@ pub async fn create_or_get_db_url(handle: AppHandle) -> Result<String> {
     db_path.push("swiftlink.db");
     let db_url = db_path.to_str().ok_or(anyhow!("db path is not valid utf8"))?;
     Ok(db_url.to_string())
-}
-
-fn spawn_process(context: Context, mut swarm: SLSwarm) {
-    spawn(async move {
-        loop {
-            let context = context.clone();
-            match swarm.next().await {
-                Some(event) => {
-                    behaviour::process_event(context.clone(), event, &mut swarm)
-                }
-                None => {
-                    info!("swarm returned none");
-                }
-            }
-        }
-    });
 }
 
 fn bind(swarm: &mut SLSwarm) -> Result<()> {

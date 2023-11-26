@@ -2,21 +2,23 @@ use std::error::Error;
 
 use libp2p::{gossipsub::{
     Config as GossipsubConfig,
-    MessageAuthenticity,
-    IdentTopic
+    IdentTopic,
+    MessageAuthenticity
 }, identity::Keypair, mdns::Config as MdnsConfig, PeerId, request_response::{Config as ReqRespConfig, ProtocolSupport}, StreamProtocol, Swarm, swarm::{
     NetworkBehaviour,
     SwarmEvent
 }};
 use tracing::{error, info};
+use tokio::spawn;
+use libp2p::futures::StreamExt;
 
 use crate::core::{
+    Context,
     gossipsub_behaviour::{
         Gossipsub,
         process_gossipsub_event
     },
-    Context,
-    json_behaviour::{JsonReqResp, process_json_event, exchange_info},
+    json_behaviour::{exchange_info, JsonReqResp, process_json_event},
     mdns_behaviour::{Mdns, process_mdns_event}
     }
 ;
@@ -48,8 +50,6 @@ impl SwiftLink {
 }
 
 pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm: &mut SLSwarm) {
-    let slink_topic = IdentTopic::new("slink");
-    swarm.behaviour_mut().gossipsub.subscribe(&slink_topic).expect("failed to subscribe to root gossipsub topic");
     match event {
         SwarmEvent::Behaviour(swift_link_event) => {
             match swift_link_event {
@@ -117,5 +117,21 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
             info!("unhandled swarm event: {:?}", event);
         }
     };
+}
+
+pub fn spawn_behaviour_process(context: Context, mut swarm: SLSwarm) {
+    swarm.behaviour_mut().gossipsub.subscribe(&IdentTopic::new("slink")).expect("failed to subscribe to root gossipsub topic");
+    spawn(async move {
+        loop {
+            match swarm.next().await {
+                Some(event) => {
+                    process_event(context.clone(), event, &mut swarm)
+                }
+                None => {
+                    info!("swarm returned none");
+                }
+            }
+        }
+    });
 }
 
