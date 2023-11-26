@@ -2,12 +2,15 @@ use std::num::NonZeroU8;
 use std::time::Duration;
 use anyhow::{anyhow, Result};
 use libp2p::{futures::StreamExt, SwarmBuilder, tcp, tls, yamux};
-use sqlx::{migrate::MigrateDatabase, Pool, Sqlite, SqlitePool};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use tauri::{App, AppHandle, Manager};
 use tokio::spawn;
 use tracing::info;
+use tracing::log::LevelFilter;
 
 use behaviour::SwiftLink;
+
+use migration::{Migrator, MigratorTrait};
 
 use crate::core::behaviour::SLSwarm;
 
@@ -20,31 +23,31 @@ mod gossipsub_behaviour;
 #[derive(Clone)]
 pub struct Context {
     pub app_handle: AppHandle,
-    pub db: SqlitePool,
+    pub db: DatabaseConnection,
 }
 
 impl Context {
-    async fn new(app: AppHandle, db: Pool<Sqlite>) -> Result<Self> {
-        Ok(Self {
+    fn new(app: AppHandle, db: DatabaseConnection) -> Self {
+        Self {
             app_handle: app,
             db,
-        })
+        }
     }
 }
 
 pub async fn init_core(app: &mut App) -> Result<()> {
     info!("checking db");
     let mut app_handle = app.handle().clone();
-    let db_url = create_or_get_db(app_handle).await?;
+    let db_url = create_or_get_db_url(app_handle).await?;
     info!("db url: {}", db_url);
-    let sqlite = SqlitePool::connect(&db_url).await?;
+    let db = init_db(db_url).await?;
     info!("initializing core backend");
     let mut swarm = init_swarm()?;
     info!("swarm profile initialized");
     bind(&mut swarm)?;
     info!("core initialized successfully");
     app_handle = app.handle().clone();
-    let context = Context::new(app_handle, sqlite).await?;
+    let context = Context::new(app_handle, db);
     info!("context created successfully");
     spawn_process(context, swarm);
     info!("process spawned successfully");
@@ -52,15 +55,27 @@ pub async fn init_core(app: &mut App) -> Result<()> {
     Ok(())
 }
 
-pub async fn create_or_get_db(handle: AppHandle) -> Result<String> {
+pub async fn init_db(db_url: String) -> Result<DatabaseConnection> {
+    let mut opt = ConnectOptions::new(format!("sqlite://{}?mode=rwc", db_url));
+    opt.max_connections(5)
+        .min_connections(1)
+        .connect_timeout(Duration::from_secs(60))
+        .acquire_timeout(Duration::from_secs(3 * 60))
+        .idle_timeout(Duration::from_secs(5 * 60))
+        .max_lifetime(Duration::from_secs(60 * 60))
+        .sqlx_logging(true)
+        .sqlx_logging_level(LevelFilter::Info);
+    let db = Database::connect(opt).await?;
+    Migrator::up(&db, None).await?;
+    Ok(db)
+}
+
+pub async fn create_or_get_db_url(handle: AppHandle) -> Result<String> {
     let path_resolver = handle.path();
-    let db_path = path_resolver.app_local_data_dir()?
-        .join("slink.db");
+    let mut db_path = path_resolver.app_data_dir()?;
+    tokio::fs::create_dir_all(&db_path).await?;
+    db_path.push("swiftlink.db");
     let db_url = db_path.to_str().ok_or(anyhow!("db path is not valid utf8"))?;
-    if !Sqlite::database_exists(db_url).await.unwrap_or(false) {
-        println!("creating database {}", db_url);
-        Sqlite::create_database(db_url).await?;
-    }
     Ok(db_url.to_string())
 }
 
@@ -102,7 +117,7 @@ fn init_swarm() -> Result<SLSwarm> {
         // Swarm Config
         .with_swarm_config(|mut cfg| {
             // Edit cfg here.
-            cfg = cfg.with_idle_connection_timeout(Duration::from_secs( 3 * 60));
+            cfg = cfg.with_idle_connection_timeout(Duration::from_secs(3 * 60));
             cfg = cfg.with_dial_concurrency_factor(NonZeroU8::new(10).unwrap());
             cfg
         })
