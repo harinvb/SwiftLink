@@ -25,9 +25,9 @@ pub type SLSwarm = Swarm<SwiftLink>;
 
 #[derive(NetworkBehaviour)]
 pub struct SwiftLink {
-    pub mdns: Mdns,
     pub gossipsub: Gossipsub,
     pub json: JsonReqResp,
+    pub mdns: Mdns,
 }
 
 impl SwiftLink {
@@ -145,9 +145,15 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
                 peer_id.unwrap()
             );
         }
-        SwarmEvent::NewExternalAddrCandidate { .. } => {}
-        SwarmEvent::ExternalAddrConfirmed { .. } => {}
-        SwarmEvent::ExternalAddrExpired { .. } => {}
+        SwarmEvent::NewExternalAddrCandidate { address } => {
+            info!("new external address candidate: {}", address);
+        }
+        SwarmEvent::ExternalAddrConfirmed { address } => {
+            info!("external address confirmed: {}", address);
+        }
+        SwarmEvent::ExternalAddrExpired { address } => {
+            info!("external address expired: {}", address);
+        }
         _ => {
             info!("unhandled swarm event: {:?}", event);
         }
@@ -155,11 +161,10 @@ pub fn process_event(context: Context, event: SwarmEvent<SwiftLinkEvent>, swarm:
 }
 
 pub fn spawn_behaviour_process(context: Context, mut swarm: SLSwarm) {
-    let core_topic = IdentTopic::new("slink");
     swarm
         .behaviour_mut()
         .gossipsub
-        .subscribe(&core_topic)
+        .subscribe(&IdentTopic::new("slink"))
         .expect("failed to subscribe to root gossipsub topic");
     let mut interval = interval(Duration::from_secs(5));
     spawn(async move {
@@ -170,9 +175,11 @@ pub fn spawn_behaviour_process(context: Context, mut swarm: SLSwarm) {
                     },
                 _ = interval.tick() => {
                     let connected_peer_cnt = swarm.connected_peers().count();
-                    if connected_peer_cnt >0 {
+                    if connected_peer_cnt > 0 {
                         let core_topic = IdentTopic::new("slink");
-                        swarm.behaviour_mut().gossipsub.publish(core_topic, "hello world").expect("failed to publish to root gossipsub topic");
+                        if let Err(e) = swarm.behaviour_mut().gossipsub.publish(core_topic, "hello world") {
+                            error!("failed to publish to gossipsub: {}", e);
+                        }
                     }
                 }
             }
